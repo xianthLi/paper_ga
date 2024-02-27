@@ -61,7 +61,6 @@ class Demands:
         distributions_copy = copy.deepcopy(distributions)
         distributions_copy.sort(key=lambda x: self.addr.distance(x.addr))
         self.distribution_sort = [i.id for i in distributions_copy]
-        print("self.distribution_sort", self.distribution_sort)
 
     def __str__(self) -> str:
         return "(Demands: {}, {}, {})".format(self.id, self.addr.x, self.addr.y)
@@ -88,9 +87,6 @@ class Distribution:
         suppliers_copy = copy.deepcopy(suppliers)
         suppliers_copy.sort(key=lambda x: self.addr.distance(x.addr))
         self.supplier_sort = [i.id for i in suppliers_copy]
-        print("self.supplier_sort", self.supplier_sort)
-        print("sort supplier: ", suppliers_copy)
-        print("sort distance: ", [self.addr.distance(s.addr) for s in suppliers_copy])
 
     def __str__(self) -> str:
         return "(Distribution: {}, {}, {})".format(self.id, self.addr.x, self.addr.y)

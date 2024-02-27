@@ -45,11 +45,6 @@ class GA:
         storage_cost = sum(db_storage) * per_storage_cost * days
         stockout_cost = sum(dd_stockout) * per_stockout_cost * days
         all_cost = sum([tran_cost, construction_cost, storage_cost, stockout_cost])
-        print("tran_cost: ", tran_cost)
-        print("construction_cost: ", construction_cost)
-        print("storage_cost: ", storage_cost)
-        print("stockout_cost: ", stockout_cost)
-        print("all cost: ", all_cost)
         return all_cost
 
     def fitness_2(self, individual):
@@ -194,7 +189,7 @@ def get_individual_by_num(i):
         result.append(int(i))
     return result
 
-if __name__ == "__main__":
+def main():
     ga = GA()
     ga.init_compute()
 
@@ -235,3 +230,6 @@ if __name__ == "__main__":
     draw = Draw(ga.supplier_containers, ga.distribution_containers, ga.demands_container, p1, p2)
 
     draw.run()
+
+if __name__ == "__main__":
+    main()
