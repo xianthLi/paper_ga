@@ -4,7 +4,7 @@ import math
 
 cos34 = math.cos(34.2 / 180 * math.pi)  # 计算维度距离的系数
 per_cost = 0.012        # 运输成本
-per_stockout_cost = 1  # 缺货成本
+per_stockout_cost = 2  # 缺货成本
 per_storage_cost = 0.1  # 存储成本
 days = 1000             # 系统运行的天数
 

@@ -143,14 +143,32 @@ class GA:
 
         db_storage = copy.deepcopy(db_caps2)    # 配送中心的存储容量
 
-        # 配送中心向零售商的计划
+        # 配送中心向零售商的计划, 需要填满零售商
         for dd_i, demand in enumerate(self.demands_container.demands):
             # 从最近的零售商那边取货
             for d_i in demand.distribution_sort:
                 if individual[d_i] == 0:
-                    # 该配送中心未必选中
+                    # 该配送中心未被选中
                     continue
-                if db_caps2[d_i] > 0:
+                if db_caps2[d_i] >= dd_caps[dd_i]:
+                    goods = min(dd_caps[dd_i], db_caps2[d_i])
+                    distribution_to_demand[(d_i, demand.id)] = goods
+                    # 配送中心发货
+                    db_caps2[d_i] -= goods
+                    # 零售商收货
+                    dd_caps[dd_i] -= goods
+                    distribution_to_demand[(d_i, demand.id)] = goods
+                    #零售商只能够接受一次货物
+                    break
+        
+        # 配送中心向零售商的计划，不需要填满，考虑最近的贪婪原则
+        for dd_i, demand in enumerate(self.demands_container.demands):
+            # 从最近的零售商那边取货
+            for d_i in demand.distribution_sort:
+                if individual[d_i] == 0:
+                    # 该配送中心未被选中
+                    continue
+                if db_caps2[d_i] > 0 and dd_caps[dd_i] > 0:
                     goods = min(dd_caps[dd_i], db_caps2[d_i])
                     distribution_to_demand[(d_i, demand.id)] = goods
                     # 配送中心发货
