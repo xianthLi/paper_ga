@@ -52,6 +52,24 @@ class GA:
         print("all cost: ", all_cost)
         return all_cost
 
+    def fitness_2(self, individual):
+        """
+        返回成本和服务率的评估值
+
+        Args:
+            individual (_type_): _description_
+        """
+        supplier_to_distribution, distribution_to_demand, db_storage, dd_stockout = self.get_plan(individual)
+        tran_cost = self.compute_tran_cost(supplier_to_distribution, distribution_to_demand) * days
+        construction_cost = self.compute_construction_cost(individual)
+        storage_cost = sum(db_storage) * per_storage_cost * days
+        stockout_cost = sum(dd_stockout) * per_stockout_cost * days
+        all_cost = sum([tran_cost, construction_cost, storage_cost, stockout_cost])
+
+        # 服务率
+        service_rate = 1 - sum(dd_stockout) / sum(self.demands_container.caps)
+        return all_cost, service_rate
+
     def compute_tran_cost(self, supplier_to_distribution, distribution_to_demand):
         """
         计算运输成本
@@ -145,10 +163,6 @@ class GA:
         
         return supplier_to_distribution, distribution_to_demand, db_storage, dd_caps
 
-
-ga = GA()
-ga.init_compute()
-
 def get_individual_by_num(i):
     """
     将一个数字变成 2 进制
@@ -162,39 +176,44 @@ def get_individual_by_num(i):
         result.append(int(i))
     return result
 
-fitness = []
-for i in range(255):
-    fitness.append(ga.fitness(get_individual_by_num(i)))
-print("*" * 20 + "result" + "*" * 20)
-print("各个方案的成本: ", fitness)
-print("最低成本: ", min(fitness))
-method = get_individual_by_num(fitness.index(min(fitness)))
-print("最优方案: ", method)
-print("选中了 {} 个配送中心".format(sum(method)))
-for i, c in enumerate(method):
-    if c == 1:
-        print("第{}个配送中心被选中".format(i+1))
+if __name__ == "__main__":
+    ga = GA()
+    ga.init_compute()
 
-print()
-print("物流计划如下")
 
-p1, p2, c1, c2 = ga.get_plan(method)
-print(">>>供应商供货详情")
-for (s_i, d_i) , num in p1.items():
-    if num == 0:
-        continue
-    print("{} 号供应商给 {} 号物流中心供货 {} kg".format(s_i+1, d_i+1, num))
+    fitness = []
+    for i in range(255):
+        fitness.append(ga.fitness(get_individual_by_num(i)))
+    print("*" * 20 + "result" + "*" * 20)
+    print("各个方案的成本: ", fitness)
+    print("最低成本: ", min(fitness))
+    method = get_individual_by_num(fitness.index(min(fitness)))
+    print("最优方案: ", method)
+    print("选中了 {} 个配送中心".format(sum(method)))
+    for i, c in enumerate(method):
+        if c == 1:
+            print("第{}个配送中心被选中".format(i+1))
 
-print(">>>零售商供货详情")
-for (d_i, dd_i), num in p2.items():
-    if num == 0:
-        continue
-    print("{} 号物流中心给 {} 号零售商供货 {} kg".format(d_i+1, dd_i+1, num))
+    print()
+    print("物流计划如下")
 
-print(">>>供应商缺货详情:")
-for i, num in enumerate(c2):
-    print("{} 号供应商缺货 {} kg".format(i+1, num))
+    p1, p2, c1, c2 = ga.get_plan(method)
+    print(">>>供应商供货详情")
+    for (s_i, d_i) , num in p1.items():
+        if num == 0:
+            continue
+        print("{} 号供应商给 {} 号物流中心供货 {} kg".format(s_i+1, d_i+1, num))
 
-draw = Draw(ga.supplier_containers, ga.distribution_containers, ga.demands_container, p1, p2)
+    print(">>>零售商供货详情")
+    for (d_i, dd_i), num in p2.items():
+        if num == 0:
+            continue
+        print("{} 号物流中心给 {} 号零售商供货 {} kg".format(d_i+1, dd_i+1, num))
 
-draw.run()
+    print(">>>供应商缺货详情:")
+    for i, num in enumerate(c2):
+        print("{} 号供应商缺货 {} kg".format(i+1, num))
+
+    draw = Draw(ga.supplier_containers, ga.distribution_containers, ga.demands_container, p1, p2)
+
+    draw.run()
