@@ -4,7 +4,7 @@ import math
 
 cos34 = math.cos(34.2 / 180 * math.pi)  # 计算维度距离的系数
 per_cost = 0.012        # 运输成本
-per_stockout_cost = 2  # 缺货成本
+per_stockout_cost = 0.2  # 缺货成本
 per_storage_cost = 0.1  # 存储成本
 days = 1000             # 系统运行的天数
 
@@ -15,18 +15,60 @@ demand_caps = [500, 200, 200, 1000, 500, 200, 500, 500, 500, 1000, 200, 3000, 30
 # 物流中心容量
 distribution_caps = [5000, 5000, 5000, 5000, 10000, 10000, 10000, 10000]
 # 物流中心的建造成本
-distribution_construct_cost = [150, 150, 150, 150, 300, 300, 300, 300]
+distribution_construct_cost = [i * 10000 for i in  [150, 150, 150, 150, 300, 300, 300, 300]]
+# 物流中心的备用处理能力
+distribution_backup = [2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000]
+# 物流中心的备用成本造价
+distribution_backup_cost = [i * 10000 for i in [30, 30, 30, 30, 30, 30, 30, 30]]
+
+# 中断场景
+scenes = [
+    {
+        "probability": 95,                  # 概率
+        "supplier_ratio": [0] * 6,          # 供应商的中断比例
+        "distribution_ratio": [0] * 8,      # 配送中心的中断比例
+    },
+    {
+        "probability": 2,
+        "supplier_ratio": [0.5, 0, 0, 0, 0, 0],
+        "distribution_ratio": [0, 0, 0, 0, 0, 0, 0, 0]
+    },
+    {
+        "probability": 1,
+        "supplier_ratio": [0, 0, 0, 0, 0, 0],
+        "distribution_ratio": [0.5, 0, 0, 0, 0.5, 0, 0, 0]
+    },
+    {
+        "probability": 0.5,
+        "supplier_ratio": [0.5, 0, 0, 0, 0, 0],
+        "distribution_ratio": [0.5, 0, 0, 0, 0.5, 0, 0, 0]
+    },
+    {
+        "probability": 0.5,
+        "supplier_ratio": [0.5, 0.5, 0.5, 0, 0, 0],
+        "distribution_ratio": [0, 0, 0, 0, 0, 0, 0, 0]
+    },
+    {
+        "probability": 0.5,
+        "supplier_ratio": [0, 0, 0, 0, 0, 0],
+        "distribution_ratio": [1, 0.5, 0, 0, 1, 0.5, 0, 0]
+    },
+    {
+        "probability": 0.5,
+        "supplier_ratio": [0.5, 0.5, 0.5, 0, 0, 0],
+        "distribution_ratio": [1, 0.5, 0.5, 0.5, 1, 0.5, 0.5, 0.5]
+    },
+]
 
 
 class Addr:
     def __init__(self, x, y) -> None:
-        self.x = int(x)
-        self.y = int(y)
+        self.x = x
+        self.y = y
 
     def distance(self, addr):
-        distance = int((abs(self.x - addr.x) * 111 * cos34  + abs(self.y - addr.y) * 111))
+        distance = abs(self.x - addr.x) * 111 * cos34  + abs(self.y - addr.y) * 111
         return distance
-
 
 class Supplier:
     # 供应商
@@ -109,7 +151,19 @@ class SupplyContainer:
         ]
         self.addr = np.array(self.addr).reshape(self.num, 2)
         self.caps = supply_caps
+        self.real_caps = copy.deepcopy(self.caps)
         self.suppliers = [Supplier(i, Addr(self.addr[i][0], self.addr[i][1]), self.caps[i]) for i in range(self.num)]
+
+    def set_caps_rate(self, rate):
+        """
+        设置供应商的中断比例
+
+        Args:
+            rate (_type_): _description_
+        """
+        for i, supplier in enumerate(self.suppliers):
+            supplier.cap = self.real_caps[i] * (1 - rate[i])
+            self.caps[i] = supplier.cap
 
     def __str__(self) -> str:
         return "Suppliers: {}".format(self.suppliers)
@@ -172,5 +226,38 @@ class DistributionContainer:
         ]
         self.addr = np.array(self.addr).reshape(8, 2)
         self.caps = distribution_caps
+        self.real_caps = copy.deepcopy(self.caps)
         self.distributions = [Distribution(i, Addr(self.addr[i][0], self.addr[i][1]), self.caps[i]) for i in range(self.num)]
         self.construction_cost = distribution_construct_cost
+        self.backups = distribution_backup
+        self.backups_cost = distribution_backup_cost
+
+    def set_caps_rate(self, rate):
+        """
+        设置配送中心的中断比例
+
+        Args:
+            rate (_type_): _description_
+        """
+        for i, distribution in enumerate(self.distributions):
+            distribution.cap = self.real_caps[i] * (1 - rate[i])
+            self.caps[i] = distribution.cap
+
+    def add_caps_backup(self, backup_list):
+        """
+        添加备用容量， 输入为一个0， 1 值的列表
+
+        Args:
+            backups (_type_): _description_
+        """
+        for i, distribution in enumerate(self.distributions):
+            if backup_list[i] == 1:
+                distribution.cap += self.backups[i]
+                self.caps[i] = distribution.cap
+
+    def compute_backup_cost(self, backup_list, construct_list):
+        cost = 0
+        for index, num in enumerate(backup_list):
+            if num == 1 and construct_list[index] == 1:
+                cost += self.backups_cost[index]
+        return cost

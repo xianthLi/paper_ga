@@ -1,180 +1,8 @@
 import numpy as np
-import copy
-
-from data import cos34, per_cost, per_stockout_cost, per_storage_cost, days
-from data import  SupplyContainer, DemandsContainer, DistributionContainer
 
 from draw import Draw
-
-
-
-class GA:
-    def __init__(self) -> None:
-        self.supplier_containers = SupplyContainer()          # 供应商
-        self.distribution_containers = DistributionContainer()  # 配送中心
-        self.demands_container = DemandsContainer()            # 零售商
-
-        self.distribution_supplier_matrix = None
-        self.demand_distribution_matrix = []
-
-    def init_compute(self):
-        """
-        初始化一些计算过程
-        """
-        # 计算每个配送中心 的最佳供应商
-        for distribution in self.distribution_containers.distributions:
-            distribution.compute_supplier_sort(self.supplier_containers.suppliers)
-        
-        # 计算每个零售商的最佳配送中心
-        for demand in self.demands_container.demands:
-            demand.compute_distribution_sort(self.distribution_containers.distributions)
-
-        # 一个二维数组的矩阵，计算配送中心到供应商的距离
-        self.distribution_supplier_matrix = []
-        for distribution in self.distribution_containers.distributions:
-            self.distribution_supplier_matrix.append([distribution.addr.distance(supplier.addr) for supplier in self.supplier_containers.suppliers])
-
-        # 一个二维数组的矩阵，计算配送中心到零售商的距离
-        for demand in self.demands_container.demands:
-            self.demand_distribution_matrix.append([demand.addr.distance(distribution.addr) for distribution in self.distribution_containers.distributions])
-
-    def fitness(self, individual):
-        supplier_to_distribution, distribution_to_demand, db_storage, dd_stockout = self.get_plan(individual)
-        tran_cost = self.compute_tran_cost(supplier_to_distribution, distribution_to_demand) * days
-        construction_cost = self.compute_construction_cost(individual)
-        storage_cost = sum(db_storage) * per_storage_cost * days
-        stockout_cost = sum(dd_stockout) * per_stockout_cost * days
-        all_cost = sum([tran_cost, construction_cost, storage_cost, stockout_cost])
-        return all_cost
-
-    def fitness_2(self, individual):
-        """
-        返回成本和服务率的评估值
-
-        Args:
-            individual (_type_): _description_
-        """
-        supplier_to_distribution, distribution_to_demand, db_storage, dd_stockout = self.get_plan(individual)
-        tran_cost = self.compute_tran_cost(supplier_to_distribution, distribution_to_demand) * days
-        construction_cost = self.compute_construction_cost(individual)
-        storage_cost = sum(db_storage) * per_storage_cost * days
-        stockout_cost = sum(dd_stockout) * per_stockout_cost * days
-        all_cost = sum([tran_cost, construction_cost, storage_cost, stockout_cost])
-
-        # 服务率
-        service_rate = 1 - sum(dd_stockout) / sum(self.demands_container.caps)
-        return all_cost, service_rate
-
-    def compute_tran_cost(self, supplier_to_distribution, distribution_to_demand):
-        """
-        计算运输成本
-
-        Args:
-            supplier_to_distribution (_type_): _description_
-            distribution_to_demand (_type_): _description_
-        """
-        cost = 0
-        for (s_i, d_i), num in supplier_to_distribution.items():
-            cost += num * self.distribution_supplier_matrix[d_i][s_i] * per_cost
-
-        for (d_i, dd_i), num in distribution_to_demand.items():
-            cost += num * self.demand_distribution_matrix[dd_i][d_i] * per_cost
-        return cost
-
-    def compute_construction_cost(self, individual):
-        """
-        计算建造成本
-
-        Args:
-            individual (_type_): _description_
-        """
-        cost = 0
-        for d, c in zip(individual, self.distribution_containers.construction_cost):
-            cost += d * c
-        return cost
-
-    def get_plan(self, individual):
-        """
-        计算这个计划
-
-        Args:
-            individual (_type_): _description_
-        return:
-            supplier_to_distribution (_type_): 供应商向配送中心的计划
-            distribution_to_demand (_type_): 配送中心向零售商的计划
-            db_storage: 配送中心的使用容量
-            dd_caps: 零售商的缺货量
-        """
-        supplier_to_distribution = {} # 供应商向配送中心的计划
-        distribution_to_demand = {} # 配送中心向零售商的计划
-        # 供应商容量
-        s_caps = self.supplier_containers.caps.copy()
-        # 配送中心容量1
-        db_caps1 = self.distribution_containers.caps.copy()
-        # 配送中心容量2
-        db_caps2 = self.distribution_containers.caps.copy()
-        # 零售商容量
-        dd_caps = self.demands_container.caps.copy()
-
-        for i, d in enumerate(individual):
-            if d == 0:
-                continue
-            # 供应商向配送中心的计划
-            for s_i in self.distribution_containers.distributions[i].supplier_sort:
-                if db_caps1[i] <= 0:
-                    # 配送中心已经被填满了
-                    break
-                if s_caps[s_i] > 0:
-                    goods = min(s_caps[s_i], db_caps1[i])
-                    # 供应商发货
-                    s_caps[s_i] -= goods
-                    # 配送中心收货
-                    db_caps1[i] -= goods
-                    supplier_to_distribution[(s_i, i)] = goods
-
-        for index, num in enumerate(db_caps1):
-            if num > 0:
-                db_caps2[index] -= num
-
-        db_storage = copy.deepcopy(db_caps2)    # 配送中心的存储容量
-
-        # 配送中心向零售商的计划, 需要填满零售商
-        for dd_i, demand in enumerate(self.demands_container.demands):
-            # 从最近的零售商那边取货
-            for d_i in demand.distribution_sort:
-                if individual[d_i] == 0:
-                    # 该配送中心未被选中
-                    continue
-                if db_caps2[d_i] >= dd_caps[dd_i]:
-                    goods = min(dd_caps[dd_i], db_caps2[d_i])
-                    distribution_to_demand[(d_i, demand.id)] = goods
-                    # 配送中心发货
-                    db_caps2[d_i] -= goods
-                    # 零售商收货
-                    dd_caps[dd_i] -= goods
-                    distribution_to_demand[(d_i, demand.id)] = goods
-                    #零售商只能够接受一次货物
-                    break
-        
-        # 配送中心向零售商的计划，不需要填满，考虑最近的贪婪原则
-        for dd_i, demand in enumerate(self.demands_container.demands):
-            # 从最近的零售商那边取货
-            for d_i in demand.distribution_sort:
-                if individual[d_i] == 0:
-                    # 该配送中心未被选中
-                    continue
-                if db_caps2[d_i] > 0 and dd_caps[dd_i] > 0:
-                    goods = min(dd_caps[dd_i], db_caps2[d_i])
-                    distribution_to_demand[(d_i, demand.id)] = goods
-                    # 配送中心发货
-                    db_caps2[d_i] -= goods
-                    # 零售商收货
-                    dd_caps[dd_i] -= goods
-                    distribution_to_demand[(d_i, demand.id)] = goods
-                    #零售商只能够接受一次货物
-                    break
-        
-        return supplier_to_distribution, distribution_to_demand, db_storage, dd_caps
+from ga import GA
+from data import scenes
 
 def get_individual_by_num(i):
     """
@@ -189,11 +17,21 @@ def get_individual_by_num(i):
         result.append(int(i))
     return result
 
+
+def print_individual_info(individual):
+    """
+    打印长度为 16 的个体计划
+
+    Args:
+        individual (_type_): _description_
+    """
+    ga = GA()
+    ga.set_scene_list(scenes)
+    print(ga.fitness_by_scene(individual))
+
+
 def main():
     ga = GA()
-    ga.init_compute()
-
-
     fitness = []
     for i in range(255):
         fitness.append(ga.fitness(get_individual_by_num(i)))
@@ -233,3 +71,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    # print_individual_info([1]*16)
