@@ -2,7 +2,7 @@
 import numpy as np
 import copy
 
-from data import cos34, per_cost, per_stockout_cost, per_storage_cost, days, scenes
+from data import cos34, per_cost, per_stockout_cost, per_storage_cost, days, scenes, stock_safe_rate, per_stock_safe_cost
 from data import  SupplyContainer, DemandsContainer, DistributionContainer
 
 from draw import Draw
@@ -103,6 +103,30 @@ class GA:
             cost += cost1 * probability
             service_rate += service_rate1 * probability
         return cost / 100, service_rate / 100
+    
+    def fitness_with_backup_and_safe_stock(self, individual):
+        """
+        计算有冗余和安全库存下的物流方案与成本
+
+        Args:
+            individual (_type_): _description_
+        """
+        choices = individual[:8]            # 物流中心个体 
+        backup = individual[8:16]           # 冗余设备
+        safe_stock = individual[16:]        # 安全库存
+
+        safe_cost = 0                       # 安全库存的成本
+        for i, is_choice in enumerate(choices):
+            if is_choice == 1 and safe_stock[i] == 1:
+                self.distribution_containers.distributions[i].set_safe_stock(stock_safe_rate)
+                safe_cost += self.distribution_containers.real_caps[i] * stock_safe_rate * per_stock_safe_cost
+            else:
+                self.distribution_containers.distributions[i].set_safe_stock(0)
+
+        backup_individual = individual[:16]
+        cost, server_rate = self.fitness_with_backup(backup_individual)
+        cost += safe_cost
+        return cost, server_rate
 
     def fitness_with_backup(self, individual):
         """
@@ -196,11 +220,16 @@ class GA:
                     # 配送中心已经被填满了
                     break
                 if s_caps[s_i] > 0:
-                    goods = min(s_caps[s_i], db_caps1[i])
+                    # 看是否有安全库存
+                    safe_stock = 0
+                    if self.distribution_containers.distributions[i].safe_stock_rate != 0:
+                        safe_stock = self.distribution_containers.real_caps[i] * self.distribution_containers.distributions[i].safe_stock_rate
+                    goods = min(s_caps[s_i], db_caps1[i] - safe_stock)
                     # 供应商发货
                     s_caps[s_i] -= goods
                     # 配送中心收货
                     db_caps1[i] -= goods
+                    db_caps1[i] -= safe_stock
                     supplier_to_distribution[(s_i, i)] = goods
 
         for index, num in enumerate(db_caps1):
@@ -244,9 +273,7 @@ class GA:
                     distribution_to_demand[(d_i, demand.id)] = goods
                     #零售商只能够接受一次货物
                     break
-        
         return supplier_to_distribution, distribution_to_demand, db_storage, dd_caps
-
 
 
 def print_cost8(individual):

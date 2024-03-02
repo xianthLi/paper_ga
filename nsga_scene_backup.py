@@ -56,12 +56,12 @@ def main(mu, ngen, cxpb):
 def plot_pareto_front(hof):
     front = np.array([ind.fitness.values for ind in hof])
     plt.scatter(front[:,0], front[:,1], c="r")
-    for x, y in front:
-        plt.annotate(f'({x:.4f}, {y:.4f})', # 这里使用了格式化字符串保留四位小数
-                     (x, y),                 # 这是标注文本的坐标位置
-                     textcoords="offset points", # 使用偏移
-                     xytext=(0,10),         # 每个标签上移 10 个单位，避免被点覆盖
-                     ha='center')           # 水平居中对齐
+    # for x, y in front:
+        # plt.annotate(f'({x:.4f}, {y:.4f})', # 这里使用了格式化字符串保留四位小数
+        #              (x, y),                 # 这是标注文本的坐标位置
+        #              textcoords="offset points", # 使用偏移
+        #              xytext=(0,10),         # 每个标签上移 10 个单位，避免被点覆盖
+        #              ha='center')           # 水平居中对齐
     plt.axis("tight")
     plt.xlabel("cost")
     plt.ylabel("server rate")

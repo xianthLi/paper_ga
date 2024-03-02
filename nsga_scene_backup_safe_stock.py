@@ -1,26 +1,19 @@
+# 有冗余、安全库存下的多目标，有中断场景的方案
 from deap import base, creator, tools, algorithms
 import random
 import numpy as np
 import matplotlib.pyplot as plt
-import itertools
 
 from ga import GA
 from data import scenes
 
-def generate_population(toolbox, n=256, length=8):
-    # 生成所有可能的 8 位二进制组合
-    all_combinations = list(itertools.product([0, 1], repeat=length))
-    # 转换为个体
-    print(all_combinations[:])
-    population = [toolbox.individual(lambda: gene) for gene in all_combinations]
-    return population
 
 # 主程序
-def main(mu=256, ngen=50, cxpb=0.9):
+def main(mu, ngen, cxpb):
     random.seed(64)
-    MU = 200  # 种群大小
-    NGEN = 2  # 代数
-    CXPB = 0.9
+    MU = mu  # 种群大小
+    NGEN = ngen  # 代数
+    CXPB = cxpb
 
     ga = GA()
     ga.set_scene_list(scenes)
@@ -28,23 +21,23 @@ def main(mu=256, ngen=50, cxpb=0.9):
     # 定义问题：双目标最小化
     creator.create("FitnessMulti", base.Fitness, weights=(-1.0, 1.0))
     creator.create("Individual", list, fitness=creator.FitnessMulti)
-    # creator.create("Individual", list, fitness=creator.F)
-    size = 8
+
+    size = 24
     # 初始化
     toolbox = base.Toolbox()
     # toolbox.register("attr_float", random.randint, 0, 1)
-    toolbox.register("individual", tools.initIterate, creator.Individual)
+    toolbox.register("attr_bool", random.randint, 0, 1)
+    toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.attr_bool, n=size)
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
-    toolbox.register("evaluate", ga.fitness_by_scene8)
+    toolbox.register("evaluate", ga.fitness_with_backup_and_safe_stock)
     # toolbox.register("mate", tools.cxSimulatedBinaryBounded, low=-10, up=10, eta=20.0)
     toolbox.register("mate", tools.cxUniform, indpb=0.5)
     # toolbox.register("mutate", tools.mutPolynomialBounded, low=-10, up=10, eta=20.0, indpb=0.1)
     toolbox.register("mutate", tools.mutFlipBit, indpb=0.02)
     toolbox.register("select", tools.selNSGA2)
 
-
-    pop = generate_population(toolbox)
+    pop = toolbox.population(MU)
     # pop = toolbox.population(n=MU)
     print(pop)
     hof = tools.ParetoFront()
@@ -65,27 +58,12 @@ def main(mu=256, ngen=50, cxpb=0.9):
 def plot_pareto_front(hof):
     front = np.array([ind.fitness.values for ind in hof])
     plt.scatter(front[:,0], front[:,1], c="r")
-    for x, y in front:
-        plt.annotate(f'({x:.4f}, {y:.4f})', # 这里使用了格式化字符串保留四位小数
-                     (x, y),                 # 这是标注文本的坐标位置
-                     textcoords="offset points", # 使用偏移
-                     xytext=(0,10),         # 每个标签上移 10 个单位，避免被点覆盖
-                     ha='center')           # 水平居中对齐
-    plt.axis("tight")
-    plt.xlabel("cost")
-    plt.ylabel("server rate")
-    plt.title("Pareto Front")
-    plt.show()
-
-def plot_pareto_front(hof):
-    front = np.array([ind.fitness.values for ind in hof])
-    plt.scatter(front[:,0], front[:,1], c="r")
     # for x, y in front:
-    #     plt.annotate(f'({x:.4f}, {y:.4f})', # 这里使用了格式化字符串保留四位小数
-    #                  (x, y),                 # 这是标注文本的坐标位置
-    #                  textcoords="offset points", # 使用偏移
-    #                  xytext=(0,10),         # 每个标签上移 10 个单位，避免被点覆盖
-    #                  ha='center')           # 水平居中对齐
+        # plt.annotate(f'({x:.4f}, {y:.4f})', # 这里使用了格式化字符串保留四位小数
+        #              (x, y),                 # 这是标注文本的坐标位置
+        #              textcoords="offset points", # 使用偏移
+        #              xytext=(0,10),         # 每个标签上移 10 个单位，避免被点覆盖
+        #              ha='center')           # 水平居中对齐
     plt.axis("tight")
     plt.xlabel("cost")
     plt.ylabel("server rate")

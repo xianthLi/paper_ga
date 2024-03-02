@@ -3,10 +3,12 @@ import copy
 import math
 
 cos34 = math.cos(34.2 / 180 * math.pi)  # 计算维度距离的系数
-per_cost = 0.012        # 运输成本
-per_stockout_cost = 0.2  # 缺货成本
-per_storage_cost = 0.1  # 存储成本
-days = 1000             # 系统运行的天数
+per_cost = 0.012            # 运输成本
+per_stockout_cost = 0.2      # 缺货成本
+per_stock_safe_cost = 0.1   # 安全库存的成本
+stock_safe_rate = 0.05      # 安全库存的比例
+per_storage_cost = 0.1      # 存储成本
+days = 1000                # 系统运行的天数
 
 # 供应商容量
 supply_caps = [6000, 3000, 6000, 9000, 3000, 3000]   
@@ -117,6 +119,7 @@ class Distribution:
         self.addr = addr
         self.cap = cap
         # 距离该配送中心的供应商距离的排序
+        self.safe_stock_rate = 0
         self.supplier_sort = None
 
     def compute_supplier_sort(self, suppliers):
@@ -129,6 +132,12 @@ class Distribution:
         suppliers_copy = copy.deepcopy(suppliers)
         suppliers_copy.sort(key=lambda x: self.addr.distance(x.addr))
         self.supplier_sort = [i.id for i in suppliers_copy]
+
+    def set_safe_stock(self, safe_stock_rate):
+        """"
+        设计安全成本的比例
+        """
+        self.safe_stock_rate = safe_stock_rate
 
     def __str__(self) -> str:
         return "(Distribution: {}, {}, {})".format(self.id, self.addr.x, self.addr.y)
