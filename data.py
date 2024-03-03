@@ -4,59 +4,59 @@ import math
 
 cos34 = math.cos(34.2 / 180 * math.pi)  # 计算维度距离的系数
 per_cost = 0.012            # 运输成本
-per_stockout_cost = 0.2      # 缺货成本
+per_stockout_cost = 1.5       # 缺货成本
 per_stock_safe_cost = 0.1   # 安全库存的成本
 stock_safe_rate = 0.05      # 安全库存的比例
 per_storage_cost = 0.1      # 存储成本
-days = 1000                # 系统运行的天数
+days = 3000                # 系统运行的天数
 
 # 供应商容量
 supply_caps = [6000, 3000, 6000, 9000, 3000, 3000]   
 # 零售商需求
 demand_caps = [500, 200, 200, 1000, 500, 200, 500, 500, 500, 1000, 200, 3000, 3000, 500, 1000, 200, 3000, 500, 200, 3000, 1000, 500, 3000, 1000, 1000, 1000, 500] 
 # 物流中心容量
-distribution_caps = [5000, 5000, 5000, 5000, 10000, 10000, 10000, 10000]
+distribution_caps = [3000, 3000, 3000, 3000, 6000, 6000, 6000, 6000]
 # 物流中心的建造成本
-distribution_construct_cost = [i * 10000 for i in  [150, 150, 150, 150, 300, 300, 300, 300]]
+distribution_construct_cost = [i * 10000 for i in  [50, 50, 50, 50, 100, 100, 100, 100]]
 # 物流中心的备用处理能力
 distribution_backup = [2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000]
 # 物流中心的备用成本造价
-distribution_backup_cost = [i * 10000 for i in [30, 30, 30, 30, 30, 30, 30, 30]]
+distribution_backup_cost = [i * 10000 for i in [15] * 8]
 
 # 中断场景
 scenes = [
     {
-        "probability": 95,                  # 概率
+        "probability": 80,                  # 概率
         "supplier_ratio": [0] * 6,          # 供应商的中断比例
         "distribution_ratio": [0] * 8,      # 配送中心的中断比例
     },
     {
-        "probability": 2,
+        "probability": 5,
         "supplier_ratio": [0.5, 0, 0, 0, 0, 0],
-        "distribution_ratio": [0, 0, 0, 0, 0, 0, 0, 0]
+        "distribution_ratio": [0.5, 0, 1, 0, 0.5, 0, 0.4, 0]
+    },
+    {
+        "probability": 5,
+        "supplier_ratio": [0, 0, 0, 0, 0, 0],
+        "distribution_ratio": [0.5, 0, 1, 0, 0.5, 0, 1, 0]
+    },
+    {
+        "probability": 3,
+        "supplier_ratio": [0.5, 0, 0, 0, 0, 0],
+        "distribution_ratio": [0.5, 0, 0, 1, 0.5, 0, 0.8, 0]
+    },
+    {
+        "probability": 2,
+        "supplier_ratio": [0.5, 0.5, 0.5, 0, 0, 0],
+        "distribution_ratio": [0, 0, 0.6, 0, 0.8, 0, 0, 0]
     },
     {
         "probability": 1,
         "supplier_ratio": [0, 0, 0, 0, 0, 0],
-        "distribution_ratio": [0.5, 0, 0, 0, 0.5, 0, 0, 0]
-    },
-    {
-        "probability": 0.5,
-        "supplier_ratio": [0.5, 0, 0, 0, 0, 0],
-        "distribution_ratio": [0.5, 0, 0, 0, 0.5, 0, 0, 0]
-    },
-    {
-        "probability": 0.5,
-        "supplier_ratio": [0.5, 0.5, 0.5, 0, 0, 0],
-        "distribution_ratio": [0, 0, 0, 0, 0, 0, 0, 0]
-    },
-    {
-        "probability": 0.5,
-        "supplier_ratio": [0, 0, 0, 0, 0, 0],
         "distribution_ratio": [1, 0.5, 0, 0, 1, 0.5, 0, 0]
     },
     {
-        "probability": 0.5,
+        "probability": 4,
         "supplier_ratio": [0.5, 0.5, 0.5, 0, 0, 0],
         "distribution_ratio": [1, 0.5, 0.5, 0.5, 1, 0.5, 0.5, 0.5]
     },
@@ -154,12 +154,12 @@ class SupplyContainer:
             116.576495,	34.25315,
             116.937227,	33.546092,
             116.51433,	34.43965,
-            116.372942,	34.438832,
-            116.92036,	34.221858,
-            116.883632,	34.222028,
+            117.072942,	34.438832,
+            116.92036,	34.751858,
+            116.853632,	33.752028,
         ]
         self.addr = np.array(self.addr).reshape(self.num, 2)
-        self.caps = supply_caps
+        self.caps = copy.deepcopy(supply_caps)
         self.real_caps = copy.deepcopy(self.caps)
         self.suppliers = [Supplier(i, Addr(self.addr[i][0], self.addr[i][1]), self.caps[i]) for i in range(self.num)]
 
@@ -215,7 +215,8 @@ class DemandsContainer:
             117.073778,	34.106461,
         ]
         self.addr = np.array(self.addr).reshape(27, 2)
-        self.caps =  demand_caps
+        self.real_caps = copy.deepcopy(demand_caps)
+        self.caps =  copy.deepcopy(self.real_caps)
         self.demands = [Demands(i, Addr(self.addr[i][0], self.addr[i][1]), self.caps[i]) for i in range(self.num)]
 
 class DistributionContainer:
@@ -234,7 +235,7 @@ class DistributionContainer:
             116.910554, 34.313556,
         ]
         self.addr = np.array(self.addr).reshape(8, 2)
-        self.caps = distribution_caps
+        self.caps = copy.deepcopy(distribution_caps)
         self.real_caps = copy.deepcopy(self.caps)
         self.distributions = [Distribution(i, Addr(self.addr[i][0], self.addr[i][1]), self.caps[i]) for i in range(self.num)]
         self.construction_cost = distribution_construct_cost
@@ -259,14 +260,16 @@ class DistributionContainer:
         Args:
             backups (_type_): _description_
         """
+        # self.caps = copy.deepcopy(self.real_caps)
         for i, distribution in enumerate(self.distributions):
             if backup_list[i] == 1:
-                distribution.cap += self.backups[i]
-                self.caps[i] = distribution.cap
+                self.caps[i] += self.backups[i]
+                distribution.cap = self.caps[i]
 
     def compute_backup_cost(self, backup_list, construct_list):
         cost = 0
         for index, num in enumerate(backup_list):
             if num == 1 and construct_list[index] == 1:
                 cost += self.backups_cost[index]
+        # print("备份 cost： ", cost)
         return cost

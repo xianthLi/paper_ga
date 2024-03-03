@@ -61,11 +61,11 @@ class GA:
         storage_cost = sum(db_storage) * per_storage_cost * days
         stockout_cost = sum(dd_stockout) * per_stockout_cost * days
         all_cost = sum([tran_cost, construction_cost, storage_cost, stockout_cost])
-        print("运输成本: ", tran_cost)
-        print("建造成本: ", construction_cost)
-        print("存储成本: ", storage_cost)
-        print("缺货成本: ", stockout_cost)
-        print("总成本: ", all_cost)
+        # print("运输成本: ", tran_cost)
+        # print("建造成本: ", construction_cost)
+        # print("存储成本: ", storage_cost)
+        # print("缺货成本: ", stockout_cost)
+        # print("总成本: ", all_cost)
         return all_cost
 
     def fitness_by_scene(self, individual):
@@ -78,8 +78,14 @@ class GA:
         """
         cost = 0
         service_rate = 0
+
+        # print("enter 16 个体： ")
         for scene in self.scene_list:
+            # print("原始供应中心库存,", self.supplier_containers.real_caps)
+            # print("原始物流中心库存,", self.distribution_containers.real_caps)
             self.set_scene(scene)
+            # print("设置场景后，供应中心的库存： ", self.supplier_containers.caps)
+            # print("设置场景后，物流中心的库存： ", self.distribution_containers.caps)
             probability = scene["probability"]
             cost1, service_rate1 = self.fitness_with_backup(individual)
             cost += cost1 * probability
@@ -97,11 +103,16 @@ class GA:
         cost = 0
         service_rate = 0
         for scene in self.scene_list:
+            # print("原始供应中心库存,", self.supplier_containers.real_caps)
+            # print("原始物流中心库存,", self.distribution_containers.real_caps)
             self.set_scene(scene)
+            # print("设置场景后，供应中心的库存： ", self.supplier_containers.caps)
+            # print("设置场景后，物流中心的库存： ", self.distribution_containers.caps)
             probability = scene["probability"]
             cost1, service_rate1 = self.fitness_2(individual)
             cost += cost1 * probability
             service_rate += service_rate1 * probability
+            # print("*"*20)
         return cost / 100, service_rate / 100
     
     def fitness_with_backup_and_safe_stock(self, individual):
@@ -157,7 +168,7 @@ class GA:
         all_cost = sum([tran_cost, construction_cost, storage_cost, stockout_cost])
 
         # 服务率
-        service_rate = 1 - sum(dd_stockout) / sum(self.demands_container.caps)
+        service_rate = 1 - sum(dd_stockout) / sum(self.demands_container.real_caps)
         return all_cost, service_rate
 
     def compute_tran_cost(self, supplier_to_distribution, distribution_to_demand):
@@ -206,6 +217,7 @@ class GA:
         s_caps = self.supplier_containers.caps.copy()
         # 配送中心容量1
         db_caps1 = self.distribution_containers.caps.copy()
+        # print("配送中心容量： ", db_caps1)
         # 配送中心容量2
         db_caps2 = self.distribution_containers.caps.copy()
         # 零售商容量
@@ -223,7 +235,7 @@ class GA:
                     # 看是否有安全库存
                     safe_stock = 0
                     if self.distribution_containers.distributions[i].safe_stock_rate != 0:
-                        safe_stock = self.distribution_containers.real_caps[i] * self.distribution_containers.distributions[i].safe_stock_rate
+                        safe_stock = self.distribution_containers.real_caps[i] * stock_safe_rate
                     goods = min(s_caps[s_i], db_caps1[i] - safe_stock)
                     # 供应商发货
                     s_caps[s_i] -= goods

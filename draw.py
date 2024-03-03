@@ -47,4 +47,27 @@ class Draw:
             end_point = self.demands.addr[end]
             self.ax.arrow(to_point[0], to_point[1], end_point[0] - to_point[0], end_point[1] - to_point[1], head_width=0.01, head_length=0.01, fc='purple', ec='purple')
 
+def draw_point(hof1, hof2):
 
+    front = np.array([ind.fitness.values for ind in hof1])
+    plt.scatter(front[:,0], front[:,1], c="r")
+    for x, y in front:
+        plt.annotate(f'({x:.4f}, {y:.4f})', # 这里使用了格式化字符串保留四位小数
+                     (x, y),                 # 这是标注文本的坐标位置
+                     textcoords="offset points", # 使用偏移
+                     xytext=(0,10),         # 每个标签上移 10 个单位，避免被点覆盖
+                     ha='center')           # 水平居中对齐
+
+    front = np.array([ind.fitness.values for ind in hof2])
+    plt.scatter(front[:,0], front[:,1], c="g")
+    for x, y in front:
+        plt.annotate(f'({x:.4f}, {y:.4f})', # 这里使用了格式化字符串保留四位小数
+                     (x, y),                 # 这是标注文本的坐标位置
+                     textcoords="offset points", # 使用偏移
+                     xytext=(0,10),         # 每个标签上移 10 个单位，避免被点覆盖
+                     ha='center')           # 水平居中对齐
+    plt.axis("tight")
+    plt.xlabel("cost")
+    plt.ylabel("server rate")
+    plt.title("Pareto Front")
+    plt.show()
