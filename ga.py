@@ -78,8 +78,9 @@ class GA:
         """
         cost = 0
         service_rate = 0
+        if len(individual) == 24:
+            individual = individual[:16]
 
-        # print("enter 16 个体： ")
         for scene in self.scene_list:
             # print("原始供应中心库存,", self.supplier_containers.real_caps)
             # print("原始物流中心库存,", self.distribution_containers.real_caps)
