@@ -115,6 +115,28 @@ class GA:
             service_rate += service_rate1 * probability
             # print("*"*20)
         return cost / 100, service_rate / 100
+
+    def fitness_by_scene24(self, individual):
+        """
+
+
+        Args:
+            individual (_type_): _description_
+        """
+        cost = 0
+        service_rate = 0
+        for scene in self.scene_list:
+            # print("原始供应中心库存,", self.supplier_containers.real_caps)
+            # print("原始物流中心库存,", self.distribution_containers.real_caps)
+            self.set_scene(scene)
+            # print("设置场景后，供应中心的库存： ", self.supplier_containers.caps)
+            # print("设置场景后，物流中心的库存： ", self.distribution_containers.caps)
+            probability = scene["probability"]
+            cost1, service_rate1 = self.fitness_with_backup_and_safe_stock(individual)
+            cost += cost1 * probability
+            service_rate += service_rate1 * probability
+            # print("*"*20)
+        return cost / 100, service_rate / 100
     
     def fitness_with_backup_and_safe_stock(self, individual):
         """

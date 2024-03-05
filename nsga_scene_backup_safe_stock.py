@@ -30,7 +30,7 @@ def main(mu, ngen, cxpb):
     toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.attr_bool, n=size)
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
-    toolbox.register("evaluate", ga.fitness_with_backup_and_safe_stock)
+    toolbox.register("evaluate", ga.fitness_by_scene24)
     # toolbox.register("mate", tools.cxSimulatedBinaryBounded, low=-10, up=10, eta=20.0)
     toolbox.register("mate", tools.cxUniform, indpb=0.5)
     # toolbox.register("mutate", tools.mutPolynomialBounded, low=-10, up=10, eta=20.0, indpb=0.1)

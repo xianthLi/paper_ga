@@ -20,7 +20,7 @@ def main(mu, ngen, cxpb):
     creator.create("FitnessMulti", base.Fitness, weights=(-1.0, 1.0))
     creator.create("Individual", list, fitness=creator.FitnessMulti)
 
-    size = 24
+    size = 16
     # 初始化
     toolbox = base.Toolbox()
     # toolbox.register("attr_float", random.randint, 0, 1)
